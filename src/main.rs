@@ -1,10 +1,44 @@
+extern crate core;
+
+fn main() {
+    let env = Environment::new(Points::vector(0.0, -0.1, 0.0), Points::vector(0.0001, 0.0, 0.0));
+    let proyectile = Proyectile::new(Points::vector(0.0, 1.0, 0.0), Points::vector(0.02, 0.0, 0.0));
+    let mut current = proyectile;
+    let mut iteration = 0;
+    while current.position.y > 0.0 {
+        println!("{}: {:?}", iteration, &current);
+        current = tick(&env, &current);
+        iteration+=1;
+    }
+    println!("END => {}: {:?}", iteration, &current);
+}
+struct Environment {
+    gravity: Points,
+    wind: Points
+}
+#[derive(Debug)]
+struct Proyectile {
+    position: Points,
+    velocity: Points
+}
+impl Proyectile {
+    pub fn new(position: Points, velocity: Points) -> Self {
+        Proyectile { position, velocity}
+    }
+}
+impl Environment {
+    pub fn new(gravity: Points, wind: Points) -> Self {
+        Environment { gravity, wind}
+    }
+}
+fn tick(env: &Environment, proyectile: &Proyectile) -> Proyectile{
+    Proyectile::new(proyectile.position + proyectile.velocity, proyectile.velocity + env.gravity + env.wind)
+}
 pub fn float_fuzzy_eq(left: f64, right: f64) -> bool {
     let eps = 0.00001;
     (left - right).abs() < eps
 }
-fn main() {
-    println!("Hello, world!");
-}
+
 use std::ops;
 impl ops::Add<Self> for Points {
     type Output = Self;
@@ -67,6 +101,13 @@ impl Points{
     }
     pub fn magnitude(&self) -> f64 {(self.x.powi(2) + self.y.powi(2) + self.z.powi(2) + self.w.powi(2)).sqrt()}
     pub fn normalize(&self) -> Self { *self / self.magnitude()}
+    pub fn dot(&self, other: &Points) -> f64 { self.x*other.x + self.y*other.y + self.z*other.z + self.w*other.w }
+    pub fn cross(&self, other: &Points) -> Points {
+        if !self.is_vector() || !other.is_vector(){
+            panic!("Cross product must be from two vectors")
+        }
+        Points::vector(self.y*other.z - self.z*other.y, self.z*other.x - self.x*other.z, self.x*other.y - self.y*other.x,)
+    }
 }
 #[cfg(test)]
 mod test {
@@ -102,43 +143,44 @@ mod test {
         let point_one = Points::new(2.7, -5.2, 9.9, 0.0);
         let point_two = Points::new(-2.7, 5.2, -9.9, 1.0);
         let expected = Points::new(0.0, 0.0, 0.0, 1.0);
-        assert_eq!(point_one+point_two, expected)
+        let result = point_one + point_two;
+        assert_eq!(expected, result)
     }
     #[test]
     fn test_points_diff(){
         let point_one = Points::vertex(2.7, -5.2, 9.9);
         let point_two = Points::vertex(-2.7, 5.2, -9.9);
-        let expected_right = Points::vector(5.4, -10.4, 19.8);
-        let expected_left = point_one-point_two;
-        assert_eq!(expected_left, expected_right);
-        assert!(expected_left.is_vector());
+        let expected = Points::vector(5.4, -10.4, 19.8);
+        let result = point_one-point_two;
+        assert_eq!(result, expected);
+        assert!(result.is_vector());
     }
     #[test]
     fn test_vec_point_diff(){
         let point = Points::vertex(2.7, -5.2, 9.9);
         let vec = Points::vector(2.7, -5.2, 9.9);
-        let result_right = Points::vertex(0.0, 0.0, 0.0);
-        let result_left = point-vec;
-        assert!(result_left.is_vertex());
-        assert_eq!(result_left, result_right);
+        let expected = Points::vertex(0.0, 0.0, 0.0);
+        let result = point-vec;
+        assert!(result.is_vertex());
+        assert_eq!(expected, result);
     }
     #[test]
     fn test_vec_diff(){
         let vec1 = Points::vector(2.7, -5.2, 9.9);
         let vec2 = Points::vector(2.7, -5.2, 9.9);
-        let result_right = Points::vector(0.0, 0.0, 0.0);
-        let result_left = vec1-vec2;
-        assert!(result_left.is_vector());
-        assert_eq!(result_left, result_right);
+        let expected = vec1-vec2;
+        let result = Points::vector(0.0, 0.0, 0.0);
+        assert!(expected.is_vector());
+        assert_eq!(expected, result);
     }
     #[test]
     fn diff_zero_vector(){
         let vec1 = Points::vector(0.0, 0.0, 0.0);
         let vec2 = Points::vector(2.7, 5.2, 9.9);
-        let result_right = Points::vector(-2.7, -5.2, -9.9);
-        let result_left = vec1-vec2;
-        assert!(result_left.is_vector());
-        assert_eq!(result_left, result_right);
+        let expected = vec1-vec2;
+        let result = Points::vector(-2.7, -5.2, -9.9);
+        assert!(expected.is_vector());
+        assert_eq!(expected, result);
     }
     #[test]
     fn negate_tuple() {
@@ -225,6 +267,30 @@ mod test {
         let vector = Points::vector(1.0, 2.0, 3.0);
         let expected = 1.0;
         let result = vector.normalize().magnitude();
+        assert_eq!(expected, result);
+    }
+    #[test]
+    fn dot_product_of_points() {
+        let a = Points::vector(1.0, 2.0, 3.0);
+        let b = Points::vector(2.0, 3.0, 4.0);
+        let expected = 20.0;
+        let result = a.dot(&b);
+        assert_eq!(expected, result);
+    }
+    #[test]
+    fn cross_product_of_vectors_a_b() {
+        let a = Points::vector(1.0, 2.0, 3.0);
+        let b = Points::vector(2.0, 3.0, 4.0);
+        let expected = Points::vector(-1.0, 2.0, -1.0);
+        let result = a.cross(&b);
+        assert_eq!(expected, result);
+    }
+    #[test]
+    fn cross_product_of_vectors_b_a() {
+        let a = Points::vector(1.0, 2.0, 3.0);
+        let b = Points::vector(2.0, 3.0, 4.0);
+        let expected = Points::vector(1.0, -2.0, 1.0);
+        let result = b.cross(&a);
         assert_eq!(expected, result);
     }
 }
