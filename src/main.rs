@@ -1,5 +1,6 @@
 mod points;
 mod utils;
+mod canvas;
 
 use crate::points::Points;
 

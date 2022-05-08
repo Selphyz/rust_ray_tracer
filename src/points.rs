@@ -1,5 +1,5 @@
 use std::ops;
-use super::utils::float_fuzzy_eq;
+use crate::utils::float_fuzzy_eq;
 
 impl ops::Add<Self> for Points {
     type Output = Self;
